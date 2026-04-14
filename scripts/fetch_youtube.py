@@ -48,7 +48,7 @@ def fetch():
                         'source': '투자센스TV',
                         'type': 'youtube',
                     })
-                if len(videos) >= 12:
+                if len(videos) >= 50:
                     break
             if videos:
                 break

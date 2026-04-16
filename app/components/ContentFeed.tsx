@@ -12,6 +12,36 @@ interface ContentItem {
   views?: number;
 }
 
+interface CarouselSet {
+  id: string;
+  title: string;
+  date: string;
+  images: string[];
+  count: number;
+  instagram_url?: string;
+  category?: string;
+}
+
+const CAT_LABELS: Record<string, string> = {
+  insight: '촉센세 인사이트',
+  kb_weekly: 'KB 주간 시세',
+  weekly_report: '주간 레포트',
+  daily: '일일 실거래',
+  redevelopment: '재개발 현황',
+};
+
+const R2_PUBLIC = 'https://pub-977d97f056d54b90a43eea57f035a326.r2.dev';
+
+async function getCarousels(): Promise<CarouselSet[]> {
+  try {
+    const res = await fetch(`${R2_PUBLIC}/data/carousel-index.json`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
 async function getContent() {
   try {
     const host = (await headers()).get('host') ?? 'localhost:3000';
@@ -110,11 +140,60 @@ function SectionHeader({ title, href, linkText }: { title: string; href?: string
   );
 }
 
+function CarouselGroup({ title, sets }: { title: string; sets: CarouselSet[] }) {
+  if (!sets.length) return null;
+  return (
+    <section>
+      <SectionHeader title={title} href="https://instagram.com/choksense1" linkText="Instagram →" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        {sets.map((set) => (
+          <a key={set.id} href={set.instagram_url || 'https://instagram.com/choksense1'} target="_blank" rel="noopener noreferrer"
+            className="relative aspect-[4/5] overflow-hidden rounded-lg group">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={set.images[0]}
+              alt={set.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-3">
+              <p className="text-white text-[13px] sm:text-[15px] font-black leading-tight line-clamp-2" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>{set.title}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-white/40 text-[10px]">{set.date}</span>
+                {set.count > 1 && <span className="text-white/40 text-[10px]">{set.count}장</span>}
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function groupByCategory(sets: CarouselSet[]) {
+  const groups: Record<string, CarouselSet[]> = {};
+  for (const s of sets) {
+    const cat = s.category || 'insight';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(s);
+  }
+  return groups;
+}
+
 export default async function ContentFeed() {
-  const { youtube, blogs, cafe } = await getContent();
+  const [{ youtube, blogs, cafe }, carousels] = await Promise.all([
+    getContent(),
+    getCarousels(),
+  ]);
+
+  const catGroups = groupByCategory(carousels);
+  // 표시 순서: KB주간 → 주간레포트 → 일일 → 재개발 → 인사이트
+  const catOrder = ['kb_weekly', 'weekly_report', 'daily', 'redevelopment', 'insight'];
 
   return (
     <div className="space-y-10">
+      {/* 1. 유튜브 */}
       {youtube?.length > 0 && (
         <section id="youtube">
           <SectionHeader title="최신 영상" href="https://www.youtube.com/@Chok.sense1" linkText="채널 보기 →" />
@@ -123,6 +202,15 @@ export default async function ContentFeed() {
           </div>
         </section>
       )}
+
+      {/* 2. 인스타 캐러셀 (카테고리별) */}
+      {catOrder.map(cat => (
+        <CarouselGroup
+          key={cat}
+          title={CAT_LABELS[cat] || cat}
+          sets={(catGroups[cat] || []).slice(0, 5)}
+        />
+      ))}
 
       {blogs?.length > 0 && (
         <section id="blog">

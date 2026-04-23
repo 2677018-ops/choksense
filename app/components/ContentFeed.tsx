@@ -23,6 +23,7 @@ interface CarouselSet {
 }
 
 const CAT_LABELS: Record<string, string> = {
+  news: '오늘의 뉴스',
   insight: '촉센세 인사이트',
   kb_weekly: 'KB 주간 시세',
   weekly_report: '주간 레포트',
@@ -193,6 +194,14 @@ export default async function ContentFeed() {
 
   return (
     <div className="space-y-10">
+      {/* 0. 오늘의 뉴스 (뉴스 영상보다 위) */}
+      {(catGroups['news']?.length ?? 0) > 0 && (
+        <CarouselGroup
+          title={CAT_LABELS['news']}
+          sets={(catGroups['news'] || []).slice(0, 8)}
+        />
+      )}
+
       {/* 1. 유튜브 */}
       {youtube?.length > 0 && (
         <section id="youtube">
